@@ -574,6 +574,7 @@ class MyClient extends Discord.Client {
 }
 
 const client = new MyClient();
+client.logger = require('./modules/logger.js');
 client.config = require('./config.js');
 
 client.login(client.config.token);
