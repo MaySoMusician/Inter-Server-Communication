@@ -2,10 +2,7 @@ const Discord = require('discord.js'),
       SQLManager = require('./modules/sqlManager.js'),
       fs = require('fs'),
       sleep = require('util').promisify(setTimeout),
-      v = '3.0.3',
-      inviteCompile = /(?:https?:\/\/)?discord(?:app\.com\/invite|\.gg)\/?[a-zA-Z0-9]+\/?/,
-      replyCompile = /^:>([0-9]{18}).+/,
-      quoteComplie = /^::>([0-9]{18}).+/;
+      v = '3.0.3';
 
 function saveBanMembers(_list) {
   fs.writeFileSync('ban.txt', _list.join(','));
