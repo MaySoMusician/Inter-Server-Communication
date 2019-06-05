@@ -1,5 +1,5 @@
 const Discord = require('discord.js'),
-      SQLManager = require('./modules/manager.js'),
+      SQLManager = require('./modules/sqlManager.js'),
       fs = require('fs'),
       sleep = require('util').promisify(setTimeout),
       v = '3.0.3',
