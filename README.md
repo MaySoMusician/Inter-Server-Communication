@@ -1,5 +1,5 @@
-# global-chat3.0
-Global Chat 3.0
+# Inter-Server Communication
+Inter-Server Communication. Reincarnation of Global Chat 3.0
 
 ## License
 
