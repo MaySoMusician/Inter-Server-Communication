@@ -105,7 +105,7 @@
   },
   "overrides": [
     {
-      "files": ["*/commands/*.js"],
+      "files": ["commands/*.js"],
       "rules": {
         "node/exports-style": [
           "error",
@@ -114,7 +114,7 @@
       }
     },
     {
-      "files": ["*/modules/*.js"],
+      "files": ["modules/*.js"],
       "rules": {
         "node/exports-style": "off"
       }
