@@ -574,4 +574,6 @@ class MyClient extends Discord.Client {
 }
 
 const client = new MyClient();
-client.login(process.argv.pop());
+client.config = require('./config.js');
+
+client.login(client.config.token);

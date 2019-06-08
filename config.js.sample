@@ -1,0 +1,12 @@
+const config = {
+  // Bot Owner, level 0 by default. A User ID. Should never be anything else than the bot owner's ID.
+  ownerID: '<your id>',
+
+  // Bot's Token. Check on https://discordapp.com/developers/applications/me
+  token: '<token of the bot>',
+
+  // Prefix of commands. Strings
+  prefix: '>',
+};
+
+module.exports = config;
