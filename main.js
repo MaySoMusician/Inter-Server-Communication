@@ -1,8 +1,8 @@
 const Discord = require('discord.js'),
+      CommandManager = require('./modules/commandManager.js'),
       SQLManager = require('./modules/sqlManager.js'),
       fs = require('fs'),
-      sleep = require('util').promisify(setTimeout),
-      v = '3.0.3';
+      sleep = require('util').promisify(setTimeout);
 
 function saveBanMembers(_list) {
   fs.writeFileSync('ban.txt', _list.join(','));
@@ -40,6 +40,9 @@ class MyClient extends Discord.Client {
     this.connecting = 0;
     this.debug = [];
     this.checking = [];
+
+    this.commandManager = new CommandManager(this);
+    this.commandManager.init();
 
     for (const [key, value] of Object.entries(this.webhooks)) {
       const values = Object.keys(value);
@@ -268,13 +271,6 @@ class MyClient extends Discord.Client {
       });
   }
 
-  userCheck(message) {
-    if (message.author.id === '212513828641046529') return 0;
-    if (message.guild.ownerID === message.author.id) return 1;
-    if (message.member.hasPermission(Discord.Permissions.FLAGS.MANAGE_CHANNELS)) return 2;
-    return 3;
-  }
-
   async addChannelGlobal(channel, guild, name = 'global-chat') {
     let webhook;
     try {
@@ -306,198 +302,32 @@ class MyClient extends Discord.Client {
     if (this.bans.includes(message.author.id)) return;
     if (message.author.bot) return;
 
-    if (message.content.startsWith('>')) {
-      await this.command(message);
-      return;
+    if (message.content.startsWith(this.config.prefix)) {
+      // Here we separate a command name and arguments for the command.
+      // e.g. if we have the message ">hoge you are an idiot", we'll get the following:
+      // command = hoge
+      // args = ['you', 'are', 'an', 'idiot]
+      const args = message.content.slice(this.config.prefix.length).trim().split(/ +/g),
+            command = args.shift().toLowerCase();
+
+      // Check whether the command, or alias, exist in the collections defined.
+      const cmd = this.commandManager.getCommand(command); // eslint-disable-line one-var
+      if (!cmd) return; // Quit if the command not found.
+
+      // Some commands may not be useable in PMs. This check prevents those commands from running and return a friendly error message.
+      if (!message.guild && cmd.conf.guildOnly) {
+        return message.channel.send('指定されたコマンドはDMでは使用できません。サーバー内でお試しください。');
+      }
+
+      if (!this.commandManager.checkPermission(cmd, message)) {
+        return message.channel.send(`:no_entry_sign: このコマンドを実行するのに必要な権限がありません。`);
+      }
+
+      return this.commandManager.run(cmd, message, args);
     }
 
     if (message.channel.id in this.channels) {
       await this.sendGlobalMessage(message, this.channels[message.channel.id]);
-    }
-  }
-
-  async command(message) {
-    let command,
-        args;
-    try {
-      args = message.content.split(' ');
-      command = args.shift();
-    } catch (ex) {
-      command = message.content;
-      args = [];
-    }
-
-    if (command === '>connect') {
-      if (!(this.userCheck(message) <= 2)) return;
-      if (message.channel.id in this.channels) return;
-      if (!args || args.length === 0) {
-        process.nextTick(this.addChannelGlobal.bind(this), message.channel, message.guild, 'global-chat');
-      } else {
-        if (args[0] === 'global-r18') {
-          if (!message.channel.nsfw) {
-            await message.channel.send('NSFW指定をしてください。');
-            return;
-          }
-          process.nextTick(this.addChannelGlobal.bind(this), message.channel, message.guild, 'global-r18');
-        } else if (args[0] in this.webhooks) {
-          process.nextTick(this.addChannelGlobal.bind(this), message.channel, message.guild, args[0]);
-        }
-      }
-    } else if (command === '>disconnect') {
-      if (!(this.userCheck(message) <= 2)) return;
-      let category = false;
-      for (const [key, value] of Object.entries(this.webhooks)) {
-        if (message.channel.id in value) {
-          category = key;
-          break;
-        }
-      }
-      if (!category) return;
-      delete this.webhooks[category][message.channel.id];
-      delete this.channels[message.channel.id];
-      this.connecting -=1;
-      await message.channel.send('接続解除しました。');
-    } else if (command === '>s') {
-      let channelId,
-          messageId;
-      try {
-        ({first: channelId, second: messageId} = await this.sqlManager.getMessageIds(args[0]));
-        if (!channelId) return;
-      } catch (ex) {
-        await message.channel.send('なし');
-        return;
-      }
-      const channel = this.channels.get(channelId),
-            _message = await channel.fetchMessage(messageId),
-            embed = new Discord.RichEmbed()
-              .setTitle(`id:${args[0]}のデータ`)
-              .setDescription(_message.content)
-              .setColor(0x00bfff)
-              .setTimestamp(_message.createdAt)
-              .setAuthor(_message.author.username, _message.author.displayAvatarURL)
-              .setFooter(_message.guild.name, _message.guild.iconURL);
-      await message.channel.send(embed);
-    } else if (command === '>del') {
-      if (this.userCheck(message) !== 0) return;
-      if (!args || args.length === 0) return;
-      const _id = this.getMemberIdFromName(args[0]),
-            messages = await this.sqlManager.getMessages(_id);
-      for (const m of messages) {
-        try {
-          await m.delete();
-        } catch (ex) {
-          void 0;
-        }
-      }
-    } else if (command === '>get') {
-      if (!args || args.length === 0) return;
-      const _id = this.getMemberIdFromName(args[0]);
-      if (!_id) {
-        await message.channel.send('なし');
-        return;
-      }
-      await message.channel.send(_id);
-    } else if (command === '>ban') {
-      if (this.userCheck(message) !== 0) return;
-      if (!args || args.length === 0) return;
-
-      let _id;
-      if (Number.isNaN(Number.parseInt(args[0]))) {
-        _id = this.getMemberIdFromName(args[0]);
-      } else {
-        _id = args[0];
-      }
-      this.bans.push(_id);
-      await message.channel.send('追加しました');
-    } else if (command === '>unban') {
-      console.log(this.bans);
-      if (this.userCheck(message) !== 0) return;
-      if (!args || args.length === 0) return;
-
-      let _id;
-      if (Number.isNaN(Number.parseInt(args[0]))) {
-        _id = this.getMemberIdFromName(args[0]);
-      } else {
-        _id = args[0];
-      }
-
-      if (!this.bans.includes(_id)) {
-        await message.channel.send('いません');
-        return;
-      }
-      this.bans = this.bans.filter(uid => uid !== _id);
-      await message.channel.send('削除しました');
-    } else if (command === '>banlist') {
-      if (this.userCheck(message) !== 0) return;
-      let text = '```\n';
-      for (const _id of this.bans) {
-        if (!_id) continue;
-        const u = await this.fetchUser(_id);
-        text += `${u.username}(${u.id})\n`;
-      }
-      text += '```';
-      await message.channel.send(text);
-    } else if (command === '>notice') {
-      const desc = args.shift();
-      await this.sendGlobalNotice({
-        text: desc,
-        mode: 'update',
-        name: '更新情報',
-        _list: args,
-      });
-    } else if (command === '>debug') {
-      if (!(this.userCheck(message) <= 2)) return;
-      if (this.debug.includes(message.guild.id)) {
-        this.debug = this.debug.filter(gid => gid !== message.guild.id);
-        await message.channel.send('デバッグ機能をオフにしました。');
-        return;
-      }
-      this.debug.push(message.guild.id);
-      await message.channel.send('デバッグ機能をオンにしました。');
-    } else if (command === '>checking') {
-      if (!(this.userCheck(message) <= 2)) return;
-      if (this.checking.includes(message.guild.id)) {
-        this.checking = this.checking.filter(gid => gid !== message.guild.id);
-        await message.channel.send('送信チェック機能をオフにしました。');
-        return;
-      }
-      this.checking.push(message.guild.id);
-      await message.channel.send('送信チェック機能をオンにしました。');
-    } else if (command === '>help') {
-      const embed =
-        new Discord.RichEmbed()
-          .setTitle(`Global Chat ${v} for Discord`)
-          .setDescription('製作者: すみどら#8923')
-          .setColor(0x00ff00)
-          .addField('>tos', 'Terms of service(利用規約)をDMに送信します。', false)
-          .addField('>get [ユーザー名]', '名前からユーザーidを取得します。', false)
-          .addField('>s [メッセージid]', 'global chatに送信されたメッセージを取得します。', false)
-          .addField('>connect', 'コネクトします。チャンネル管理の権限が必要です。', false)
-          .addField('>connect [カテゴリーネーム]', '指定したカテゴリーのチャンネルにコネクトします。チャンネル管理の権限が必要です。\nカテゴリーは追加次第お知らせします。', false)
-          .addField('>disconnect', 'コネクト解除します。チャンネル管理の権限が必要です。', false)
-          .addField('>debug', 'デバッグ機能をオンにします。もう一度実行するとオフになります。チャンネル管理の権限が必要です。', false)
-          .addField('>checking', '送信チェック機能をオンにします。もう一度実行するとオフになります。チャンネル管理の権限が必要です。', false)
-          .addField('>adminhelp', 'for すみどら', false);
-      await message.channel.send(embed);
-    } else if (command === '>adminhelp') {
-      const embed =
-        new Discord.RichEmbed()
-          .setTitle(`Global Chat ${v} for Discord`)
-          .setDescription('製作者: すみどら#8923')
-          .setColor(0xff0000)
-          .addField('>ban [ユーザーネーム or id]', '無期限banします。', false)
-          .addField('>unban [ユーザーネーム or id]', 'banを解除します。', false)
-          .addField('>banlist', 'banされているユーザーを表示します。', false)
-          .addField('>notice [description] <args>', 'おしらせします。', false);
-      await message.channel.send(embed);
-    } else if (command === '>tos') {
-      try {
-        await message.author.send(contractE);
-      } catch (ex) {
-        void 0;
-      }
-    } else if (command === '>die') {
-      this.destroy();
     }
   }
 
