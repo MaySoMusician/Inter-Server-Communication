@@ -4,14 +4,17 @@ const Enmap = require('enmap'),
 
 module.exports = class CommandManager {
   #client;
+  #commands;
+  #aliases;
   #permLevels;
   #permLevelCache;
+
   constructor(client) {
     this.#client = client;
 
     // All commands and aliases are put in collections where they can be read from, catalogued, listed, etc.
-    this.commands = new Enmap();
-    this.aliases = new Enmap();
+    this.#commands = new Enmap();
+    this.#aliases = new Enmap();
 
     // Load user permissions
     this.#permLevels = require('../constants/permissions.js')(this.#client);
@@ -21,6 +24,14 @@ module.exports = class CommandManager {
     for (const current of this.#permLevels) {
       this.#permLevelCache[current.index] = current.level;
     }
+  }
+
+  get commands() {
+    return this.#commands;
+  }
+
+  get aliases() {
+    return this.#aliases;
   }
 
   async init() {
