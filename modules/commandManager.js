@@ -1,6 +1,5 @@
 const Enmap = require('enmap'),
-      {promisify} = require('util'),
-      readdir = promisify(require('fs').readdir);
+      fsp = require('fs').promises;
 
 module.exports = class CommandManager {
   #client;
@@ -36,7 +35,7 @@ module.exports = class CommandManager {
 
   async init() {
     // Here we load commands into memory, as a collection, so they're accessible anywhere.
-    const cmdFiles = await readdir('./commands');
+    const cmdFiles = await fsp.readdir('./commands');
     this.#client.logger.log(`Loading a total of ${cmdFiles.length} commands...`);
     for (const f of cmdFiles) {
       if (!f.endsWith('.js')) return; // Ignore files that's not js
