@@ -1,6 +1,6 @@
 exports.run = async (client, message, args) => {
   if (client.checking.includes(message.guild.id)) {
-    client.checking = client.checking.filter(gid => gid !== message.guild.id);
+    client.checking.remove(message.guild.id);
     await message.channel.send('送信チェック機能をオフにしました。');
     return;
   }

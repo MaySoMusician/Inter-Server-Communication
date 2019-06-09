@@ -1,6 +1,6 @@
 exports.run = async (client, message, args) => {
   if (client.debug.includes(message.guild.id)) {
-    client.debug = client.debug.filter(gid => gid !== message.guild.id);
+    client.debug.remove(message.guild.id);
     await message.channel.send('デバッグ機能をオフにしました。');
     return;
   }

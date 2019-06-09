@@ -20,6 +20,25 @@ module.exports = client => {
 
   /* MISCELLANEOUS NON-CRITICAL FUNCTIONS */
 
+  /* eslint-disable no-extend-native */
+  // EXTENDING NATIVE TYPES IS BAD PRACTICE.
+  // Why? Because if JavaScript adds this later, this conflicts with nave code.
+  // Also, if some other library you use does this, a conflict also occurs.
+  // KNOWTING THIS, however, the following methods are very useful in code, we feel.
+
+  // <Array>.remove(target) removes an element that is equal to 'target' from the array,
+  // and returns the length of the new array (i.e. [length of the original array] - 1).
+  // Notice that this is destructive.
+  // [1, 2, 3, 4, 5].remove(3) makes itself [1, 2, 4, 5] and returns 4.
+  Object.defineProperty(Array.prototype, 'remove', {
+    value: function(target) {
+      const newArray = this.filter(elem => elem !== target);
+      this.splice(0, this.length);
+      return this.push(newArray).length;
+    },
+  });
+  /* eslint-enable no-extend-native */
+
   // `await DGI.wait(1000);` to "pause" for 1 second.
   client.wait = require('util').promisify(setTimeout);
 

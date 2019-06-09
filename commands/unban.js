@@ -13,7 +13,7 @@ exports.run = async (client, message, args) => {
     await message.channel.send('いません');
     return;
   }
-  client.bans = client.bans.filter(uid => uid !== _id);
+  client.bans.remove(_id);
   await message.channel.send('削除しました');
 };
 
