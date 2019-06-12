@@ -34,7 +34,7 @@ module.exports = client => {
     value: function(target) {
       const newArray = this.filter(elem => elem !== target);
       this.splice(0, this.length);
-      return this.push(newArray).length;
+      return this.push(...newArray).length;
     },
   });
   /* eslint-enable no-extend-native */
