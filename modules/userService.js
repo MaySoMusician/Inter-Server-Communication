@@ -21,8 +21,8 @@ module.exports = class UserService {
 
   async init() {
     const loaded = await this._load();
-    this.#usersIndefinitelyBanned = loaded.indefinite;
-    this.#usersTemporarilyBanned = loaded.temporary;
+    this.#usersIndefinitelyBanned = loaded.indefinitely;
+    this.#usersTemporarilyBanned = loaded.temporarily;
     this.#isReady = true;
   }
 
@@ -36,11 +36,11 @@ module.exports = class UserService {
       indefinitely: this.usersIndefinitelyBanned,
       temporarily: this.usersTemporarilyBanned,
     };
-    return fsp.writeFile('../data/usersBanned.json', JSON.stringify(data));
+    return fsp.writeFile('./data/usersBanned.json', JSON.stringify(data));
   }
 
   _load() {
-    return fsp.readFile('../data/usersBanned.json', 'utf8')
+    return fsp.readFile('./data/usersBanned.json', 'utf8')
       .then(data => JSON.parse(data))
       .catch(e => {
         this.#client.logger.error(`Failed to load data/usersBanned.json: ${e}`);
