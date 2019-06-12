@@ -7,8 +7,10 @@ exports.run = async (client, message, args) => {
   } else {
     _id = args[0];
   }
-  client.bans.push(_id);
-  await message.channel.send('追加しました');
+
+  if (client.userService.banIndefinitely(_id)) {
+    await message.channel.send('追加しました');
+  }
 };
 
 exports.conf = {

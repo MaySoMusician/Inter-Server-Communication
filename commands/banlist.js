@@ -1,12 +1,16 @@
 exports.run = async (client, message, args) => {
-  let text = '```\n';
-  for (const _id of client.bans) {
-    if (!_id) continue;
-    const u = await client.fetchUser(_id);
-    text += `${u.username}(${u.id})\n`;
-  }
-  text += '```';
-  await message.channel.send(text);
+  const formatUserData = userId => client.fetchUser(userId).then(u => `${u.username} (${u.id})`),
+        usersBannedIndefinitely = Promise.all(client.userService.usersIndefinitelyBanned.map(id => formatUserData(id))),
+        usersBannedTemporarily = Promise.all(client.userService.usersTemporarilyBanned.map(id => formatUserData(id)));
+  await Promise.all(usersBannedIndefinitely.concat(usersBannedTemporarily));
+
+  const results = `Users that have been banned indefinitely
+${usersBannedIndefinitely.join('\n')}
+
+Users that have been banned temporarily
+${usersBannedTemporarily.join('\n')}
+`;
+  await message.channel.send('```\n' + results + '```');
 };
 
 exports.conf = {

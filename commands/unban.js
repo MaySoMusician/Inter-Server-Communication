@@ -1,5 +1,4 @@
 exports.run = async (client, message, args) => {
-  console.log(client.bans);
   if (!args || args.length === 0) return;
 
   let _id;
@@ -9,12 +8,11 @@ exports.run = async (client, message, args) => {
     _id = args[0];
   }
 
-  if (!client.bans.includes(_id)) {
+  if (client.userService.unbanIndefinitely(_id)) {
+    await message.channel.send('削除しました');
+  } else {
     await message.channel.send('いません');
-    return;
   }
-  client.bans.remove(_id);
-  await message.channel.send('削除しました');
 };
 
 exports.conf = {

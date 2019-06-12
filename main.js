@@ -1,21 +1,9 @@
 const Discord = require('discord.js'),
       CommandManager = require('./modules/commandManager.js'),
       SQLManager = require('./modules/sqlManager.js'),
+      UserService = require('./modules/userService.js'),
       fs = require('fs'),
       sleep = require('util').promisify(setTimeout);
-
-function saveBanMembers(_list) {
-  fs.writeFileSync('ban.txt', _list.join(','));
-}
-
-function loadBanMembers() {
-  try {
-    return fs.readFileSync('ban.txt', 'utf8').split(',');
-  } catch (ex) {
-    // Log exception
-    return [];
-  }
-}
 
 function saveChannelWebhook(_dict) {
   fs.writeFileSync('channels.json', JSON.stringify(_dict));
@@ -34,7 +22,6 @@ class MyClient extends Discord.Client {
   constructor(options) {
     super(options);
     this.webhooks = loadChannelWebhook();
-    this.bans = loadBanMembers();
     this.sqlManager = new SQLManager(this);
     this.channelsConnected = {};
     this.connecting = 0;
@@ -43,6 +30,8 @@ class MyClient extends Discord.Client {
 
     this.commandManager = new CommandManager(this);
     this.commandManager.init();
+
+    this.userService = new UserService(this);
 
     for (const [key, value] of Object.entries(this.webhooks)) {
       const values = Object.keys(value);
@@ -56,27 +45,18 @@ class MyClient extends Discord.Client {
     this.on('message', this.onMessage);
   }
 
-  async limitBan(message, times, reason) {
-    this.bans.push(message.author.id);
-    await message.channel.send(`<@${message.author.id}>, あなたは${reason}ため、制限時間付きbanを受けました。制限時間は${times}分です。`);
-    const user = await this.fetchUser('212513828641046529');
-    await user.send(`<@${message.author.id}>(${message.author.username},${message.author.id})は${reason}ため、制限時間付きbanを受けました。制限時間は${times}分です。`);
-    await sleep(times * 60 * 1000);
-    this.bans.pop(message.author.id);
-  }
-
   async setPref() {
     await this.user.setPresence({game: {name: `>help | ${this.connecting} channels`}});
   }
 
   async onReady() {
+    await this.userService.init();
     await this.setPref();
     await this.sendGlobalNotice({text: 'すみどらちゃんが起動しました。', title: '起動告知'});
   }
 
   end() {
     saveChannelWebhook(this.webhooks);
-    saveBanMembers(this.bans);
   }
 
   async convertMessage(message, embed, content = '') {
@@ -299,7 +279,7 @@ class MyClient extends Discord.Client {
 
   async onMessage(message) {
     if (message.author.id === '212513828641046529') void 0;
-    if (this.bans.includes(message.author.id)) return;
+    if (this.userService.checkUserBanned(message.author.id)) return;
     if (message.author.bot) return;
 
     if (message.content.startsWith(this.config.prefix)) {
@@ -333,7 +313,7 @@ class MyClient extends Discord.Client {
 
   destroy() {
     saveChannelWebhook(this.webhooks);
-    saveBanMembers(this.bans);
+    this.userService.destroy();
     return super.destroy();
   }
 
