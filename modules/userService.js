@@ -72,15 +72,15 @@ module.exports = class UserService {
     return true;
   }
 
-  async banTemporarily(userId, seconds, funcSendBanReason) {
+  async banTemporarily(userId, minutes, funcSendBanReason) {
     if (!this.#isReady) throw new Error('UserService not ready.');
     if (this.usersIndefinitelyBanned.includes(userId)) throw new Error(`Can't temporarily-ban user ${userId}, they're already indefinitely-banned.`);
 
     this.usersTemporarilyBanned.push(userId);
-    this.#client.logger.log(`User ${userId} has been temporarily-banned. Will be unbanned ${seconds} later.`);
+    this.#client.logger.log(`User ${userId} has been temporarily-banned. Will be unbanned ${minutes} mins later.`);
     process.nextTick(funcSendBanReason);
 
-    await this.#client.wait(seconds * 1000);
+    await this.#client.wait(minutes * 60 * 1000);
     this.usersTemporarilyBanned.remove(userId);
     this.#client.logger.log(`User ${userId} has been successfully unbanned (temporarily). Completed their sentence.`);
   }
