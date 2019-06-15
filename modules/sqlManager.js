@@ -112,8 +112,7 @@ module.exports = class SQLManager {
   async getMessages(authorId) {
     const _list = await this.getAllMessages(),
           channelIdList = [],
-          messageIdList = [],
-          messages = [];
+          messageIdList = [];
 
     for (const x of _list) {
       if (x.first['A'] !== authorId) continue;
@@ -121,7 +120,7 @@ module.exports = class SQLManager {
       messageIdList.push(x.second[1]);
     }
 
-    zip(channelIdList, messageIdList).forEach(async ([channelId, messageId]) => {
+    const messages = (await Promise.all(zip(channelIdList, messageIdList).map(async ([channelId, messageId]) => {
       const channel = this.#client.channels.get(channelId);
       let m;
       try {
@@ -129,9 +128,9 @@ module.exports = class SQLManager {
       } catch (ex) {
         void 0;
       }
-      if (!m) messages.push(m); // Truthy check inserted
-    });
-
+      if (!m) return null;
+      return m;
+    }))).filter(m => m !== null);
     return messages;
   }
 
